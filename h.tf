@@ -10,5 +10,5 @@ resource "steampipecloud_workspace_mod" "hypothesis_dashboards" {
   organization = "acme" 
   workspace_handle = "jon"
   path = "github.com/judell/hypothesis-dashboards"
-  constraint = "v0.1"
+  constraint = "v0.2"
 }
