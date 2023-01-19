@@ -1,4 +1,4 @@
-dashboard "Media_Conversations" {
+dashboard "MediaConversations" {
 
   tags = {
     service  = "Hypothesis"
@@ -11,7 +11,7 @@ dashboard "Media_Conversations" {
       value = <<EOT
 [Home](${local.host}/hypothesis.dashboard.Home)
 🞄
-Media_Conversations
+MediaConversations
       EOT
     }
 
@@ -56,7 +56,7 @@ Media_Conversations
     EOQ
   }
 
-  input "annotated_media_url" {
+  input "annotated_uris" {
     args = [ 
       self.input.groups.value,
       var.search_limit,
@@ -67,29 +67,54 @@ Media_Conversations
     query = query.recently_annotated_urls
   }
 
-  table {
-    title = "longest threads"
-    type = "table"
-    args = [ 
-      self.input.annotated_media_url.value,
-      self.input.groups.value
-    ]
-    query = query.threads
-    column "top_level_id" {
-      href = "https://hypothes.is/a/{{.'top_level_id'}}"
+
+  graph {
+
+    node {
+      category = category.person
+      args = [  
+        self.input.groups.value,
+        var.search_limit,
+        self.input.annotated_uris.value
+      ]
+      sql = <<EOQ
+        select
+          username as id,
+          username as title,
+          jsonb_build_object(
+            'username', username,
+            'id', id,
+            'text', text,
+            'updated', substring(updated from 1 for 10)
+          ) as properties
+        from 
+          hypothesis_search($1, $2, $3)
+      EOQ
     }
 
-  }  
 
-  hierarchy {
-    title = "conversations"
-    args = [ 
-      self.input.groups.value,
-      var.search_limit,
-      self.input.annotated_media_url.value
-    ]
-    query = query.conversational_data
+    edge {
+      args = [  
+        self.input.groups.value,
+        var.search_limit,
+        self.input.annotated_uris.value
+      ]
+      sql = <<EOQ
+        select
+          username as from_id,
+          ref_user as to_id,
+          'replies to' as title,
+          jsonb_build_object(
+            'ref_id', ref_id
+          ) as properties
+        from 
+          hypothesis_augmented_refs($1, $2, $3)
+      EOQ
+
+    }
+
   }
+
 
 }
 
