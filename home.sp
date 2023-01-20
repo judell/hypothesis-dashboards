@@ -20,21 +20,9 @@ Home
   container {
 
     input "groups" {
+      query = query.groups
       title = "Hypothesis group"
       width = 3
-      sql = <<EOQ
-        with groups as (
-          select 
-            jsonb_array_elements(groups) as group_info
-          from 
-            hypothesis_profile
-        )
-        select
-          group_info->>'name' as label,
-          group_info->>'id' as value
-        from 
-          groups
-      EOQ
     }
 
     input "annotated_uris" {
@@ -128,6 +116,9 @@ Home
       column "api query" {
         wrap = "all"
       }
+      column "document url" {
+        wrap = "all"
+      }
     }
 
 
@@ -206,32 +197,19 @@ Home
   }
 
   container {
+    
     graph {
 
       title = "conversations"
 
       node {
-        category = category.person
         args = [  
           self.input.groups.value,
           var.search_limit,
           self.input.annotated_uris.value
         ]
-        sql = <<EOQ
-          select
-            username as id,
-            username as title,
-            jsonb_build_object(
-              'username', username,
-              'id', id,
-              'text', text,
-              'updated', substring(updated from 1 for 10)
-            ) as properties
-          from 
-            hypothesis_search($1, $2, $3)
-        EOQ
+        base = node.people
       }
-
 
       edge {
         args = [  
@@ -239,21 +217,11 @@ Home
           var.search_limit,
           self.input.annotated_uris.value
         ]
-        sql = <<EOQ
-          select
-            username as from_id,
-            ref_user as to_id,
-            'replies to' as title,
-            jsonb_build_object(
-              'ref_id', ref_id
-            ) as properties
-          from 
-            hypothesis_augmented_refs($1, $2, $3)
-        EOQ
+        base = edge.conversation
+      }    
 
-      }
-
-    }    
+    }
+  
   }
 
   container {
@@ -436,25 +404,67 @@ Home
 
   }
 
-  with "hypothesis_search" {
-    args = [  
-      var.search_limit,
-      self.input.groups.value,
-      self.input.annotated_uris.value
-    ]
-    sql = <<EOQ
-      create or replace function hypothesis_search(groupid text, max int, url text)
-      returns setof hypothesis_search as $$
-        select 
-          * 
-        from 
-          hypothesis_search
-        where 
-          query = 'group=' || groupid || '&limit=' || max || '&uri=' || url
-        $$ language sql;
-    EOQ
-  }
-
 }
 
 
+node "people" {
+  category = category.person
+  sql = <<EOQ
+    select
+      username as id,
+      username as title,
+      jsonb_build_object(
+        'username', username,
+        'id', id,
+        'text', text,
+        'updated', substring(updated from 1 for 10)
+      ) as properties
+    from 
+      hypothesis_search($1, $2, $3)
+  EOQ
+}
+
+
+edge "conversation" {
+  sql = <<EOQ
+    with refs as (
+      select
+        username,
+        id,
+        jsonb_array_elements_text(refs) as ref_id
+      from
+        hypothesis_search($1, $2, $3)
+    ),
+    augmented_refs as (
+      select
+        r.username,
+        r.id,
+        r.ref_id,
+        ( select s.username as ref_user from hypothesis_search($1, $2, $3) s where s.id = r.ref_id )
+      from 
+        refs r
+    )
+    select
+      a.username as from_id,
+      a.ref_user as to_id,
+      'replies to' as title,
+      jsonb_build_object(
+        'ref_id', a.ref_id
+      ) as properties
+    from 
+      augmented_refs a
+  EOQ
+}
+
+/*
+create or replace function public.hypothesis_search(groupid text, max int, url text)
+  returns setof hypothesis_search as $$
+    select 
+      * 
+    from 
+      hypothesis_search
+    where 
+      query = 'group=' || groupid || '&limit=' || max || '&uri=' || url
+$$ language sql;
+
+*/

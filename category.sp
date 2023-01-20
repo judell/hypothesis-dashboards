@@ -1,7 +1,3 @@
 category "person" {
-  icon = "user"    
-  href  = "https://hypothes.is/a/{{.properties.'id'}}"
+  href = "https://hypothes.is/a/{{.properties.'id'}}"
 }
-
-
-
