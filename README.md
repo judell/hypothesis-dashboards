@@ -2,6 +2,16 @@
 
 Dashboards for Hypothesis annotations
 
+## How to use it
+
+Clone this repo
+
+cd ~/hypothesis-dashboards
+
+steampipe dashboard
+
+visit http://localhost:9194
+
 ## Annotations
 
 Choose a group, and an URL, then review:
