@@ -17,6 +17,20 @@ Home
 
   }
 
+  with "hypothesis_search" {
+    sql = <<EOQ
+      create or replace function public.hypothesis_search(groupid text, max int, url text)
+        returns setof hypothesis_search as $$
+          select 
+            * 
+          from 
+            hypothesis_search
+          where 
+            query = 'group=' || groupid || '&limit=' || max || '&uri=' || url
+      $$ language sql;
+    EOQ
+  }
+
   container {
 
     input "groups" {
@@ -456,15 +470,3 @@ edge "conversation" {
   EOQ
 }
 
-/*
-create or replace function public.hypothesis_search(groupid text, max int, url text)
-  returns setof hypothesis_search as $$
-    select 
-      * 
-    from 
-      hypothesis_search
-    where 
-      query = 'group=' || groupid || '&limit=' || max || '&uri=' || url
-$$ language sql;
-
-*/
