@@ -26,7 +26,7 @@ Home
           from 
             hypothesis_search
           where 
-            query = 'group=' || groupid || '&limit=' || max || '&uri=' || url
+            query = 'group=' || groupid || '&limit=' || max::int || '&uri=' || url
       $$ language sql;
     EOQ
   }
